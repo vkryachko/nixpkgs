@@ -445,6 +445,7 @@ See [](#ex-dockerTools-streamLayeredImage-hello) to see how to do that.
 For this function, you specify a [store path](https://nixos.org/manual/nix/stable/store/store-path) or a list of store paths to be added to the image, and the functions will automatically include any dependencies of those paths in the image.
 The function will attempt to create one layer per object in the Nix store that needs to be added to the image.
 In case there are more objects to include than available layers, the function will put the most ["popular"](https://github.com/NixOS/nixpkgs/tree/release-23.11/pkgs/build-support/references-by-popularity) objects in their own layers, and group all remaining objects into a single layer.
+You can also enable `enableLayerBalancing` in which case the function will make layers contain equal number of objects, still reverse sorted by popularity.
 
 An additional layer will be created with symlinks to the store paths you specified to be included in the image.
 These symlinks are built with [`symlinkJoin`](#trivial-builder-symlinkJoin), so they will be included in the root of the image.
@@ -558,6 +559,15 @@ This allows the function to produce reproducible images.
   :::
 
   _Default value:_ 100.
+
+`enableLayerBalancing` (Boolean; _optional_)
+
+: This option is useful when the number of layers in your image contains is more than `maxLayers`. By default the function will put the most
+  ["popular"](https://github.com/NixOS/nixpkgs/tree/release-23.11/pkgs/build-support/references-by-popularity) objects in their own layers,
+  and group all remaining objects into a single layer.
+  If `enableLayerBalancing` is `true`, the objects will be equally spread among layers. In some cases this option helps minimize rebuild times.
+
+  _Default value:_ `false`
 
 `extraCommands` (String; _optional_)
 

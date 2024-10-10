@@ -913,6 +913,7 @@ rec {
     , uname ? "root"
     , gname ? "root"
     , maxLayers ? 100
+    , enableLayerBalancing ? false
     , extraCommands ? ""
     , fakeRootCommands ? ""
     , enableFakechroot ? false
@@ -1066,22 +1067,36 @@ rec {
           availableLayers=$(( maxLayers - usedLayers ))
 
           # Create $maxLayers worth of Docker Layers, one layer per store path
-          # unless there are more paths than $maxLayers. In that case, create
-          # $maxLayers-1 for the most popular layers, and smush the remainaing
-          # store paths in to one final layer.
+          # unless there are more paths than $maxLayers. In that case, depending
+          # on `enableLayerBalancing` argument, we either:
+          #
+          # 1. Create $maxLayers layers with equal number of store paths with
+          #    more popular paths ending up in lower layers.
+          #
+          # 2. Create $maxLayers-1 for the most popular layers, and smush the
+          #    remainaing store paths in to one final layer.
           #
           # The following code is fiddly w.r.t. ensuring every layer is
           # created, and that no paths are missed. If you change the
           # following lines, double-check that your code behaves properly
           # when the number of layers equals:
           #      maxLayers-1, maxLayers, and maxLayers+1, 0
-          paths |
-            jq -sR '
+
+          ${if enableLayerBalancing then ''
+          jqTransform='
+              rtrimstr("\n") | split("\n")
+                | [ _nwise(length / $maxLayers | ceil) ]
+              '
+          '' else ''
+
+          jqTransform='
               rtrimstr("\n") | split("\n")
                 | (.[:$maxLayers-1] | map([.])) + [ .[$maxLayers-1:] ]
                 | map(select(length > 0))
-              ' \
-              --argjson maxLayers "$availableLayers" > store_layers.json
+              '
+          ''}
+          paths |
+            jq -sR "$jqTransform" --argjson maxLayers "$availableLayers" > store_layers.json
 
           # The index on $store_layers is necessary because the --slurpfile
           # automatically reads the file as an array.
