@@ -32,7 +32,12 @@ rustPlatform.buildRustPackage rec {
   # glibc/.../string_fortified.h: error: '__builtin_memcpy' specified bound exceeds maximum object size [-Werror=stringop-overflow=]
   postPatch = ''
     substituteInPlace $cargoDepsCopy/aws-lc-sys-*/aws-lc/crypto/asn1/a_bitstr.c \
-      --replace-warn '(len > INT_MAX - 1)' '(len < 0 || len > INT_MAX - 1)'
+      --replace-warn '(len > INT_MAX - 1)' '(len < 0 || len > INT_MAX - 1)' \
+
+    # In pkgsStatic set, there is no "gcc" on PATH, instead it's called "<hostPlatform.rust.rustcTargetSpec>-gcc".
+    # Patch build.rs to use that compiler when invoked via "gcc".
+    substituteInPlace src/cpu-template-helper/build.rs \
+      --replace-warn '"gcc"' '"'"$CC"'"'
   '';
 
   buildInputs = [ libseccomp ];
